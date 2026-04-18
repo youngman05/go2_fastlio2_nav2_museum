@@ -1,0 +1,30 @@
+project:
+  robot_name: go2_museum_guide
+  use_sim_time: false
+
+frames:
+  map: map
+  odom: odom
+  base_link: base_link
+  lidar: lidar_link
+  imu: imu_link
+
+topics:
+  cmd_vel_in: /cmd_vel
+  cmd_vel_safe: /cmd_vel_safe
+  guide_status: /guide/status
+
+go2_cmd_bridge:
+  ros__parameters:
+    max_linear_x: 0.6
+    max_linear_y: 0.3
+    max_angular_z: 0.8
+    command_timeout_sec: 0.5
+    publish_safe_cmd_vel: true
+    dry_run: true
+
+museum_guide_manager:
+  ros__parameters:
+    navigate_to_pose_action: /navigate_to_pose
+    map_frame: map
+    loop_route: false

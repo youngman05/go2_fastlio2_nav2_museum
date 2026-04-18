@@ -1,0 +1,7 @@
+waypoints:
+  - name: entrance
+    pose: [0.0, 0.0, 0.0, 1.0]
+  - name: fossil_zone
+    pose: [4.5, 1.2, 0.0, 1.0]
+  - name: media_wall
+    pose: [8.0, -1.0, 0.0, 1.0]

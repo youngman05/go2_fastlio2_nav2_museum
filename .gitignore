@@ -1,0 +1,12 @@
+build/
+install/
+log/
+runtime-data/logs/
+runtime-data/maps/
+runtime-data/bags/
+runtime-data/tmp/
+*.pyc
+__pycache__/
+.DS_Store
+.idea/
+.vscode/

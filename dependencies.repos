@@ -1,0 +1,20 @@
+repositories:
+  src/third_party/navigation2:
+    type: git
+    url: https://github.com/ros-navigation/navigation2.git
+    version: humble
+
+  src/third_party/slam_toolbox:
+    type: git
+    url: https://github.com/SteveMacenski/slam_toolbox.git
+    version: humble
+
+  src/sensor_drivers/livox_ros_driver2:
+    type: git
+    url: https://github.com/Livox-SDK/livox_ros_driver2.git
+    version: master
+
+  src/perception/fastlio2_upstream:
+    type: git
+    url: https://github.com/Ericsii/FAST_LIO_ROS2.git
+    version: main
