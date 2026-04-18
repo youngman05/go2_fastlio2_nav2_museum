@@ -18,3 +18,8 @@ repositories:
     type: git
     url: https://github.com/Ericsii/FAST_LIO_ROS2.git
     version: main
+
+  third_party/unitree_sdk2_python:
+    type: git
+    url: https://github.com/unitreerobotics/unitree_sdk2_python.git
+    version: master

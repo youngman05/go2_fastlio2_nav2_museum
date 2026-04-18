@@ -1,6 +1,7 @@
 # Project Docs
 
 - [System Architecture](architecture.md)
+- [Unitree SDK Integration](unitree_sdk.md)
 
 ## Current Status
 

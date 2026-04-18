@@ -22,6 +22,8 @@ go2_cmd_bridge:
     command_timeout_sec: 0.5
     publish_safe_cmd_vel: true
     dry_run: true
+    network_interface: ""
+    startup_mode: "none"
 
 museum_guide_manager:
   ros__parameters:

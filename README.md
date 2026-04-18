@@ -21,18 +21,19 @@ Build a Go2 museum guide robot that can:
 
 ```text
 src/
-├── bringup/                    Launch files, shared config, RViz assets
-├── control/
-│   └── go2_cmd_bridge/         ROS 2 /cmd_vel bridge for Unitree Go2
-├── navigation/
-│   └── museum_guide_manager/   Waypoint mission manager for museum tours
-├── perception/                 Notes and integration placeholder for FAST-LIO2
-└── sensor_drivers/             Notes and integration placeholder for Livox + IMU
+|- bringup/                    Launch files, shared config, RViz assets
+|- control/
+|  \- go2_cmd_bridge/          ROS 2 /cmd_vel bridge for Unitree Go2
+|- navigation/
+|  \- museum_guide_manager/    Waypoint mission manager for museum tours
+|- perception/                 Notes and integration placeholder for FAST-LIO2
+\- sensor_drivers/             Notes and integration placeholder for Livox + IMU
 
-docs-CN/                        Chinese project docs
-docs-EN/                        English project docs
-scripts/                        Runtime helpers
-runtime-data/                   Logs, maps, bags, generated runtime artifacts
+third_party/                   Non-ROS external dependencies
+docs-CN/                       Chinese project docs
+docs-EN/                       English project docs
+scripts/                       Runtime helpers
+runtime-data/                  Logs, maps, bags, generated runtime artifacts
 ```
 
 ## Planned Stack
@@ -60,10 +61,34 @@ runtime-data/                   Logs, maps, bags, generated runtime artifacts
 ```bash
 cd ~/go2_fastlio2_nav2_museum
 make setup
+make setup-unitree-sdk
 make build
 source install/setup.bash
 bash scripts/init_runtime_data.sh
 ```
+
+## Unitree SDK2 Python Integration
+
+This repository now expects the official Unitree Python SDK for real Go2 motion control:
+
+- Repo: `unitreerobotics/unitree_sdk2_python`
+- Python package: `unitree_sdk2py`
+- Core Go2 high-level interface used by this project:
+  - `ChannelFactoryInitialize(...)`
+  - `SportClient.Init()`
+  - `SportClient.Move(vx, vy, wz)`
+  - `SportClient.StopMove()`
+  - optional `SportClient.RecoveryStand()` / `SportClient.FreeWalk()`
+
+For a first hardware bringup:
+
+```bash
+cd ~/go2_fastlio2_nav2_museum
+make setup
+make setup-unitree-sdk
+```
+
+Then set `dry_run: false` in `src/bringup/config/master_params.yaml` only on the Jetson connected to the robot.
 
 ## Launch Targets
 

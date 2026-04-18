@@ -1,11 +1,22 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Optional
 
 import rclpy
 from geometry_msgs.msg import Twist
 from rclpy.node import Node
 from std_msgs.msg import String
+
+try:
+    from unitree_sdk2py.core.channel import ChannelFactoryInitialize
+    from unitree_sdk2py.go2.sport.sport_client import SportClient
+
+    UNITREE_SDK_AVAILABLE = True
+except ImportError:
+    ChannelFactoryInitialize = None
+    SportClient = None
+    UNITREE_SDK_AVAILABLE = False
 
 
 @dataclass
@@ -13,6 +24,49 @@ class VelocityLimit:
     max_linear_x: float
     max_linear_y: float
     max_angular_z: float
+
+
+class UnitreeSportAdapter:
+    def __init__(self, interface: str, startup_mode: str) -> None:
+        if not UNITREE_SDK_AVAILABLE:
+            raise RuntimeError(
+                "unitree_sdk2py is not installed. Run 'make setup-unitree-sdk' on the target machine."
+            )
+
+        if interface:
+            ChannelFactoryInitialize(0, interface)
+        else:
+            ChannelFactoryInitialize(0)
+
+        self.client = SportClient()
+        self.client.SetTimeout(10.0)
+        self.client.Init()
+        self._apply_startup_mode(startup_mode)
+
+    def send_velocity(self, vx: float, vy: float, wz: float) -> int:
+        return int(self.client.Move(vx, vy, wz))
+
+    def stop(self) -> None:
+        self.client.StopMove()
+        self.client.Move(0.0, 0.0, 0.0)
+
+    def _apply_startup_mode(self, startup_mode: str) -> None:
+        if startup_mode == "none":
+            return
+        if startup_mode == "stand_up":
+            self.client.StandUp()
+            return
+        if startup_mode == "free_walk":
+            self.client.FreeWalk()
+            return
+        if startup_mode == "recovery_stand":
+            self.client.RecoveryStand()
+            return
+        if startup_mode == "recovery_and_free_walk":
+            self.client.RecoveryStand()
+            self.client.FreeWalk()
+            return
+        raise RuntimeError(f"Unsupported startup_mode: {startup_mode}")
 
 
 class Go2CmdBridge(Node):
@@ -25,6 +79,8 @@ class Go2CmdBridge(Node):
         self.declare_parameter("command_timeout_sec", 0.5)
         self.declare_parameter("publish_safe_cmd_vel", True)
         self.declare_parameter("dry_run", True)
+        self.declare_parameter("network_interface", "")
+        self.declare_parameter("startup_mode", "none")
 
         self.limits = VelocityLimit(
             max_linear_x=float(self.get_parameter("max_linear_x").value),
@@ -34,16 +90,29 @@ class Go2CmdBridge(Node):
         self.command_timeout_sec = float(self.get_parameter("command_timeout_sec").value)
         self.publish_safe_cmd_vel = bool(self.get_parameter("publish_safe_cmd_vel").value)
         self.dry_run = bool(self.get_parameter("dry_run").value)
+        self.network_interface = str(self.get_parameter("network_interface").value)
+        self.startup_mode = str(self.get_parameter("startup_mode").value)
 
         self.last_command_time = self.get_clock().now()
         self.is_stopped = True
+        self.adapter: Optional[UnitreeSportAdapter] = None
 
         self.status_pub = self.create_publisher(String, "/go2_cmd_bridge/status", 10)
         self.safe_cmd_pub = self.create_publisher(Twist, "/cmd_vel_safe", 10)
         self.sub = self.create_subscription(Twist, "/cmd_vel", self.on_cmd_vel, 20)
         self.timer = self.create_timer(0.05, self.watchdog_tick)
 
-        self.get_logger().info("Go2 command bridge started in dry-run mode." if self.dry_run else "Go2 command bridge started.")
+        if self.dry_run:
+            self.get_logger().info("Go2 command bridge started in dry-run mode.")
+        else:
+            self.adapter = UnitreeSportAdapter(
+                interface=self.network_interface,
+                startup_mode=self.startup_mode,
+            )
+            self.get_logger().info(
+                "Go2 command bridge connected to Unitree SDK on interface '%s' with startup_mode='%s'."
+                % (self.network_interface or "<default>", self.startup_mode)
+            )
 
     def on_cmd_vel(self, msg: Twist) -> None:
         safe = Twist()
@@ -80,10 +149,12 @@ class Go2CmdBridge(Node):
         self._publish_status("watchdog timeout, robot stop command issued")
 
     def _send_to_unitree_sdk(self, cmd: Twist) -> None:
-        # TODO: replace this with the Unitree ROS 2 SDK adapter on the Jetson target.
-        self.get_logger().info(
-            "Unitree SDK stub vx=%.2f vy=%.2f wz=%.2f"
-            % (cmd.linear.x, cmd.linear.y, cmd.angular.z)
+        if self.adapter is None:
+            raise RuntimeError("Unitree adapter is not initialized")
+        ret = self.adapter.send_velocity(cmd.linear.x, cmd.linear.y, cmd.angular.z)
+        self.get_logger().debug(
+            "Unitree SDK Move returned %s for vx=%.2f vy=%.2f wz=%.2f"
+            % (ret, cmd.linear.x, cmd.linear.y, cmd.angular.z)
         )
 
     def _publish_status(self, text: str) -> None:
@@ -103,5 +174,10 @@ def main() -> None:
     try:
         rclpy.spin(node)
     finally:
+        if node.adapter is not None:
+            try:
+                node.adapter.stop()
+            except Exception as exc:  # pragma: no cover - hardware shutdown best effort
+                node.get_logger().warning(f"Failed to stop Unitree motion cleanly: {exc}")
         node.destroy_node()
         rclpy.shutdown()

@@ -1,10 +1,13 @@
 SHELL := /bin/bash
 
-.PHONY: setup build test launch-slam launch-nav launch-guide clean
+.PHONY: setup setup-unitree-sdk build test launch-slam launch-nav launch-guide clean
 
 setup:
-	vcs import src < dependencies.repos || true
+	vcs import < dependencies.repos || true
 	rosdep install --from-paths src --ignore-src -y
+
+setup-unitree-sdk:
+	bash scripts/setup_unitree_sdk.sh
 
 build:
 	source /opt/ros/humble/setup.bash && \
